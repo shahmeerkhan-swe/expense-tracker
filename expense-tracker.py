@@ -9,29 +9,29 @@ import pandas as pd
 def read_json_file(filetype: str): # read the current expenses file
     try: 
         if filetype == "expense":
-            with open("expenses.json", "r") as file: 
+            with open("data/expenses.json", "r") as file: 
                 output_list = json.load(file)
         elif filetype == "budget":
-            with open("budgets.json", "r") as file: 
+            with open("data/budgets.json", "r") as file: 
                 output_list = json.load(file)
     except FileNotFoundError:
         if filetype == "expense":
             output_list = []
-            with open("expenses.json", "w") as file:
+            with open("data/expenses.json", "w") as file:
                 json.dump(output_list, file, indent=2)
         elif filetype == "budget": 
             output_list = []
-            with open("budgets.json", "w") as file: 
+            with open("data/budgets.json", "w") as file: 
                 json.dump(output_list, file, indent=2)
     return output_list
 
 
 def save_to_json(data, target):
     if target == "expenses":
-        with open("expenses.json", "w") as file: 
+        with open("data/expenses.json", "w") as file: 
             json.dump(data, file, indent=2)
     elif target == "budgets":
-        with open("budgets.json", "w") as file: 
+        with open("data/budgets.json", "w") as file: 
             json.dump(data, file, indent=2)
 
 def export_csv(inputFile):
