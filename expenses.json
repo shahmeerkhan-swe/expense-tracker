@@ -1,37 +1,16 @@
 [
   {
     "id": 1,
-    "date": "2025-10-27",
-    "description": "McDonalds Order",
-    "amount": 45,
+    "date": "2025-11-03",
+    "description": "Careem subscription",
+    "amount": 200.0,
     "category": "uncategorized"
   },
   {
     "id": 2,
-    "date": "2025-9-28",
-    "description": "Grocery Shopping",
-    "amount": 120,
+    "date": "2025-11-03",
+    "description": "Careem order",
+    "amount": 300.0,
     "category": "uncategorized"
-  },
-  {
-    "id": 3,
-    "date": "2025-10-28",
-    "description": "rent payment",
-    "amount": 35.0,
-    "category": "uncategorized"
-  },
-  {
-    "id": 4,
-    "date": "2025-10-28",
-    "description": "fueling up car",
-    "amount": 59.99,
-    "category": "uncategorized"
-  },
-  {
-    "id": 5,
-    "date": "2025-10-28",
-    "description": "Careem bill",
-    "amount": 50.99,
-    "category": "transport"
   }
 ]

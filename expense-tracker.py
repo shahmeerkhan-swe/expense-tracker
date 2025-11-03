@@ -3,18 +3,46 @@ import json
 from datetime import datetime
 from tabulate import tabulate
 import calendar
+import csv
+import pandas as pd 
 
-def read_json_file(): # read the current expenses file
+def read_json_file(filetype: str): # read the current expenses file
     try: 
-        with open("expenses.json", "r") as file: 
-            expenses = json.load(file)
+        if filetype == "expense":
+            with open("expenses.json", "r") as file: 
+                output_list = json.load(file)
+        elif filetype == "budget":
+            with open("budgets.json", "r") as file: 
+                output_list = json.load(file)
     except FileNotFoundError:
-        expenses = []
-    return expenses
+        if filetype == "expense":
+            output_list = []
+            with open("expenses.json", "w") as file:
+                json.dump(output_list, file, indent=2)
+        elif filetype == "budget": 
+            output_list = []
+            with open("budgets.json", "w") as file: 
+                json.dump(output_list, file, indent=2)
+    return output_list
 
-def save_expenses(expenses):
-    with open("expenses.json", "w") as file: 
-        json.dump(expenses, file, indent=2)
+
+def save_to_json(data, target):
+    if target == "expenses":
+        with open("expenses.json", "w") as file: 
+            json.dump(data, file, indent=2)
+    elif target == "budgets":
+        with open("budgets.json", "w") as file: 
+            json.dump(data, file, indent=2)
+
+def export_csv(inputFile):
+    try: 
+        with open(f"{inputFile}.json", "r") as file: 
+            data = pd.read_json(file)
+
+        data.to_csv(f'{inputFile}.csv', index=False)
+        print(f"{inputFile}.csv has been created!")
+    except FileNotFoundError:
+        print(f"{inputFile}.json does not exist.")
 
 def generate_next_id(expenses):
     try: 
@@ -44,7 +72,7 @@ delete_expense.add_argument("--id", type=int, required=True, help="Provide expen
 
 # View summary
 expense_summary = subparser.add_parser("summary", help="View summary of expenses")
-expense_summary.add_argument("--month", type=int, help="Provide month of year as an integer")
+expense_summary.add_argument("--month", type=int, choices=range(1, 13), help="Provide month of year as an integer")
 expense_summary.add_argument("--category", type=str, help="Provide a category")
 
 # List expenses
@@ -53,26 +81,36 @@ list_expense.add_argument("--category", type=str, help="Filter expenses by categ
 
 # Set budget 
 set_budget = subparser.add_parser("set-budget", help="Set a budget for a particular month")
-set_budget.add_argument("--month", type=int, required=True, help="Provide a month for the budget")
+set_budget.add_argument("--month", type=int, required=True, choices=range(1, 13), help="Provide a month for the budget")
 set_budget.add_argument("--amount", type=float, required=True, help="Provide a budget amount")
+set_budget.add_argument("--year", type=int, required=True, help="Provide a year")
+
+# Check budget
+check_budget = subparser.add_parser("check-budget", help="Check the budget for a particular month")
+check_budget.add_argument("--month", type=int, required=True, choices=range(1, 13))
+check_budget.add_argument("--year", required=True, type=int, help="Enter the year for budget")
+
+# Export to CSV
+export_file = subparser.add_parser("export", help="Export your expenses/budgets to CSV")
+export_file.add_argument("--filename", required=True, type=str, help="Enter the filename (expenses/budgets)")
 
 args = parser.parse_args()
 
 # Add command logic
 if args.command == "add":
-    expenses = read_json_file()
+    expenses = read_json_file("expense")
     new_id = generate_next_id(expenses)
     if args.amount <= 0.0: 
         print("Amount cannot be 0 or negative.")
     else:  
         new_expense = {"id": new_id, "date": datetime.utcnow().strftime("%Y-%m-%d"), "description": args.description, "amount": args.amount, "category": args.category}
         expenses.append(new_expense)
-        save_expenses(expenses)
+        save_to_json(expenses, "expenses")
         print(f"Expense successfully added (ID: {new_id})")
 
 # Update command logic
 if args.command == "update":
-    expenses = read_json_file()
+    expenses = read_json_file("expense")
     found = False
     for expense in expenses:
         if expense["id"] == args.id:
@@ -84,14 +122,14 @@ if args.command == "update":
                     expense["category"] = args.category.lower().strip()
                 found = True
     if found: 
-        save_expenses(expenses)
+        save_to_json(expenses, "expenses")
         print(f"Expense updated (ID: {expense["id"]})")
     else:
         print(f"Could not find expense with ID: {args.id}")
 
 # Delete command logic
 if args.command == "delete":
-    expenses = read_json_file()
+    expenses = read_json_file("expense")
     found = False
     for expense in expenses: 
         if expense["id"] == args.id:
@@ -99,14 +137,14 @@ if args.command == "delete":
             found = True
         
     if found:
-        save_expenses(expenses)
+        save_to_json(expenses, "expenses")
         print("Expense deleted successfully")
     else: 
         print(f"Expense with ID: {args.id} could not be found.")
 
 # List command logic
 if args.command == "list":
-    expenses = read_json_file()
+    expenses = read_json_file("expense")
     if args.category: 
         filtered_expenses = []
         for expense in expenses:
@@ -117,14 +155,14 @@ if args.command == "list":
                 expense["category"] = "uncategorized"
                 continue 
         print(tabulate(filtered_expenses, headers="keys"))
-        save_expenses(expenses)
+        save_to_json(expenses, "expenses")
     else: 
         print(tabulate(expenses, headers="keys"))
         
 
 # Summary command logic
 if args.command == "summary":
-    expenses = read_json_file()
+    expenses = read_json_file("expense")
     total_all = sum(expense["amount"] for expense in expenses)
     filtered_expenses = []
 
@@ -159,18 +197,45 @@ if args.command == "summary":
 
 # Set budget logic
 if args.command == "set-budget":
-    expenses = read_json_file()
-    budget = args.amount
+    budgets = read_json_file("budget")
+    amount = args.amount
     month_name = calendar.month_name[args.month]
-    print(f"Budget for {month_name} of ${args.amount}")
+    date_string = f"{args.year}-{args.month:02d}"
+    budget = {"date": date_string, "amount": amount}
+    budgets.append(budget)
+    save_to_json(budgets, "budgets")
+    print(f"Budget set for {month_name} --> ${amount}")
 
-    month_expenses = []
+if args.command == "check-budget": 
+    budgets = read_json_file("budget")
+    expenses = read_json_file("expense")
+    month_name = calendar.month_name[args.month]
+    date_string = f"{args.year}-{args.month:02d}"
+    budget_amount = 0
+    month_amount = 0
+    
+    for budget in budgets: 
+        if budget["date"] == date_string: 
+            budget_amount = budget["amount"]
+        else: 
+            continue 
+
     for expense in expenses: 
         date = datetime.strptime(expense["date"], "%Y-%m-%d")
-        if args.month == date.month: 
-            month_expenses.append(expense)
-    total_monthly_expenses = sum(e["amount"] for e in month_expenses)
-    
-    if total_monthly_expenses > budget:
-        print(f"Budget for {month_name} exceeded.")
+        if args.month == date.month and args.year == date.year: 
+            month_amount += expense["amount"]
+        else: 
+            continue
+
+    if month_amount > budget_amount:
+        print(f"Budget for {month_name} exceeded!")
+    else:
+        remaining = budget_amount - month_amount
+        print(f"Total budget remaining for {month_name}: {remaining}")
+
+if args.command == "export":
+    filename = args.filename.lower().strip()
+    export_csv(filename)
+
+
 
